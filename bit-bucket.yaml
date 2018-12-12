@@ -1,0 +1,76 @@
+# This is a sample build configuration for JavaScript.
+# Check our guides at https://confluence.atlassian.com/x/14UWN for more examples.
+# Only use spaces to indent your .yml configuration.
+# -----
+# You can specify a custom docker image from Docker Hub as your build environment.
+image:  nikhilnidhi/inventory_base
+
+pipelines:
+   branches:
+        codeship:
+          - step:
+                caches:
+                     - node-admin
+                     - node-web
+                name: Build and Generate Artifacts
+                script:
+                    - git config --global user.email "test"
+                    - git config --global user.name "build machine"
+                    - node -v
+                    - ruby -v
+                    - cd admin
+                    - VERSION=$(npm version patch  -m "auto verison tick [skip CI]")
+                    - VERSION=$(echo $VERSION | cut -c 2-)
+                    - echo $VERSION
+                    - npm install
+                    - bower install --allow-root
+                    - git add package.json
+                    - grunt build
+                    - aws s3 sync dist s3://m-test-files/admin/$VERSION
+                    - aws s3 cp app/scripts/version.js s3://m-test-files/admin/$VERSION/scripts/version.js
+                    - cd ../web
+                    - VERSION=$(npm version patch  -m "auto verison tick [skip CI]")
+                    - VERSION=$(echo $VERSION | cut -c 2-)
+                    - echo $VERSION
+                    - npm install
+                    - bower install --allow-root
+                    - git add package.json
+                    - grunt build
+                    - aws s3 sync dist s3://m-test-files/web/$VERSION
+                    - aws s3 cp app/scripts/version.js s3://m-test-files/web/$VERSION/scripts/version.js
+                    - git commit -m "[skip CI]"
+                    - git push
+
+          - step:
+             caches:
+              - node-admin
+              - node-web
+             name: Deploy to m-test
+             script:
+                  - cd deploy
+                  - ./deploy_test.sh
+          - step:
+             caches:
+              - node-admin
+              - node-web
+             name: Deploy to staging
+             deployment: staging
+             trigger: manual
+             script:
+                - cd deploy
+                - ./deploy_staging.sh
+                
+          - step:
+             caches:
+              - node-admin
+              - node-web
+             name: Deploy to Production
+             deployment: production
+             trigger: manual
+             script:
+                - cd deploy
+                - ./deploy_prod.sh
+definitions:
+      caches:
+          node-admin: admin/node_modules
+          node-web: web/node_modules
