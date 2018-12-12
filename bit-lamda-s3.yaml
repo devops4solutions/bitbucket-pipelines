@@ -1,0 +1,16 @@
+image: lambci/lambda:build-nodejs6.10
+pipelines:
+  default:
+    - step:
+        deployment: production
+        script:
+          - npm install
+          - npm install node-lambda -g
+          - zip test.zip ./node_modules index.js test.js
+          - aws s3 cp test.zip s3://test-bucket-carnival
+          -  aws lambda update-function-code --function-name lambdatest --s3-bucket test-bucket-carnival --s3-key test.zip
+         
+
+          #- node-lambda deploy -a $AWS_ACCESS_KEY_ID -s $AWS_SECRET_ACCESS_KEY -o $AWS_ROLE -r $AWS_REGION -n $AWS_LAMBDA_FUNCTION_NAME --excludeGlobs "bitbucket-pipelines.yml"
+        caches:
+          - node
